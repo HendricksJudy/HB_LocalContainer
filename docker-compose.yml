@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  magistral:
+    build: ./graders/magistral
+    environment:
+      HF_TOKEN: ${HF_TOKEN}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+    ports:
+      - "8000:8000"
+
+  nemotron:
+    build: ./graders/nemotron
+    environment:
+      HF_TOKEN: ${HF_TOKEN}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+    ports:
+      - "8001:8001"
+
+  evaluator:
+    build: ./evaluator
+    depends_on:
+      - magistral
+    environment:
+      GRADER_ENDPOINT: http://magistral:8000/v1
+      GRADER_MODEL_NAME: magistral-small-Q8
+    volumes:
+      - ./results:/results
+    command:
+      - "--eval=healthbench"
+      - "--model=${CANDIDATE_MODEL?unset}"
+      - "--output_dir=/results/$(date +%Y%m%d_%H%M%S)"
